@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DSA Pattern Dependency Graph</title>
+    <!-- Modern Premium Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <!-- D3.js v7 CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+</head>
+<body>
+    <!-- Main SVG viewport for D3 Force Directed Graph -->
+    <svg id="graph"></svg>
+
+    <!-- Collapsible Details / Side Panel -->
+    <div id="panel" class="panel-collapsed">
+        <!-- Dynamic content will be rendered here by panel.js -->
+    </div>
+
+    <!-- UI Overlay Elements (Legend, Search, Controls) -->
+    <div id="ui-overlay">
+        <!-- Legend, Search bar etc. will go here -->
+    </div>
+
+    <!-- Load Scripts in correct dependency order -->
+    <script src="data/patterns.js"></script>
+    <script src="src/graph.js"></script>
+    <script src="src/panel.js"></script>
+    <script src="src/interactions.js"></script>
+</body>
+</html>

@@ -52,8 +52,8 @@ document.addEventListener("DOMContentLoaded", () => {
             this.baseRadius = Math.random() * 2 + 1.5;
             this.radius = this.baseRadius;
             
-            // Palette matches the pastel theme colors
-            const colors = ["#93c5fd", "#c084fc", "#a7f3d0", "#fde047", "#fca5a5"];
+            // Saturated pastels for light theme visibility
+            const colors = ["#60a5fa", "#b080f5", "#34d399", "#f59e0b", "#f87171"];
             this.color = colors[Math.floor(Math.random() * colors.length)];
         }
 
@@ -87,7 +87,7 @@ document.addEventListener("DOMContentLoaded", () => {
             ctx.beginPath();
             ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
             ctx.fillStyle = this.color;
-            ctx.globalAlpha = 0.3; // Faint, subtle, non-distracting overlay
+            ctx.globalAlpha = 0.55; // Saturated overlay for light theme visibility
             ctx.fill();
         }
     }
@@ -101,7 +101,7 @@ document.addEventListener("DOMContentLoaded", () => {
         ctx.clearRect(0, 0, width, height);
 
         // Draw connections between close particles
-        ctx.globalAlpha = 0.08; // extremely soft fainted link lines
+        ctx.globalAlpha = 0.15; // Visible slate-grey connections
         ctx.lineWidth = 0.8;
         for (let i = 0; i < particles.length; i++) {
             for (let j = i + 1; j < particles.length; j++) {
@@ -113,7 +113,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     ctx.beginPath();
                     ctx.moveTo(p1.x, p1.y);
                     ctx.lineTo(p2.x, p2.y);
-                    ctx.strokeStyle = `rgba(148, 163, 184, ${1 - dist / 110})`;
+                    ctx.strokeStyle = `rgba(100, 116, 139, ${1 - dist / 110})`;
                     ctx.stroke();
                 }
             }

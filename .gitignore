@@ -1,0 +1,14 @@
+# Local build instructions (Personal use)
+BUILD_INSTRUCTIONS.md
+
+# Operating System files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Python files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.ipynb_checkpoints

@@ -66,13 +66,22 @@ function getTopologicalOrder() {
 // Guided Topological Study Tour globals
 let tourInterval = null;
 let tourActive = false;
+let tourPaused = false;
+let tourOrder = [];
+let tourCurrentIndex = 0;
 
 window.startStudyTour = function() {
-    if (tourActive) return;
+    if (tourActive) {
+        if (tourPaused) {
+            window.togglePauseTour();
+        }
+        return;
+    }
+    
     tourActive = true;
-
-    const order = getTopologicalOrder();
-    let currentIndex = 0;
+    tourPaused = false;
+    tourOrder = getTopologicalOrder();
+    tourCurrentIndex = 0;
 
     // Show tour toast
     const toast = document.getElementById("tour-toast");
@@ -80,36 +89,60 @@ window.startStudyTour = function() {
         toast.classList.remove("hidden");
     }
 
-    function runStep() {
-        if (!tourActive || currentIndex >= order.length) {
-            window.stopStudyTour();
-            return;
-        }
+    updatePauseResumeButton();
+    runTourStep();
+};
 
-        const nodeId = order[currentIndex];
-        const node = PATTERNS.find(p => p.id === nodeId);
-        if (!node) return;
+function runTourStep() {
+    if (!tourActive || tourPaused) return;
 
-        // Update toast description text
-        const toastText = document.getElementById("tour-toast-text");
-        if (toastText) {
-            toastText.innerHTML = `Step ${currentIndex + 1} of ${order.length}: <strong>${node.label}</strong> (Tier ${node.tier})`;
-        }
-
-        // Animate focus centering on graph
-        window.centerNodeOnGraph(nodeId);
-
-        currentIndex++;
-
-        // Wait 2.5s to allow reading details, then proceed
-        tourInterval = setTimeout(runStep, 2600);
+    if (tourCurrentIndex >= tourOrder.length) {
+        window.stopStudyTour();
+        return;
     }
 
-    runStep();
+    const nodeId = tourOrder[tourCurrentIndex];
+    const node = PATTERNS.find(p => p.id === nodeId);
+    if (!node) return;
+
+    // Update toast description text
+    const toastText = document.getElementById("tour-toast-text");
+    if (toastText) {
+        toastText.innerHTML = `Step ${tourCurrentIndex + 1} of ${tourOrder.length}: <strong>${node.label}</strong> (Tier ${node.tier})`;
+    }
+
+    // Animate focus centering on graph
+    window.centerNodeOnGraph(nodeId);
+
+    tourCurrentIndex++;
+
+    // Wait 2.6s to allow reading details, then proceed
+    tourInterval = setTimeout(runTourStep, 2600);
+}
+
+window.togglePauseTour = function() {
+    if (!tourActive) return;
+
+    if (tourPaused) {
+        // Resume
+        tourPaused = false;
+        updatePauseResumeButton();
+        runTourStep();
+    } else {
+        // Pause
+        tourPaused = true;
+        if (tourInterval) {
+            clearTimeout(tourInterval);
+            tourInterval = null;
+        }
+        updatePauseResumeButton();
+    }
 };
 
 window.stopStudyTour = function() {
     tourActive = false;
+    tourPaused = false;
+    tourCurrentIndex = 0;
     if (tourInterval) {
         clearTimeout(tourInterval);
         tourInterval = null;
@@ -120,6 +153,18 @@ window.stopStudyTour = function() {
     }
     closePanel();
 };
+
+function updatePauseResumeButton() {
+    const btn = document.getElementById("tour-btn-pause-resume");
+    if (btn) {
+        btn.textContent = tourPaused ? "Resume" : "Pause";
+        if (tourPaused) {
+            btn.classList.add("tour-paused");
+        } else {
+            btn.classList.remove("tour-paused");
+        }
+    }
+}
 
 document.addEventListener("DOMContentLoaded", () => {
     // 1. Create Tooltip and Guided Tour Toast overlays programmatically
@@ -133,7 +178,10 @@ document.addEventListener("DOMContentLoaded", () => {
     toastDiv.className = "hidden";
     toastDiv.innerHTML = `
         <span id="tour-toast-text">Guided Tour</span>
-        <button class="tour-btn-stop" onclick="window.stopStudyTour()">Stop Tour</button>
+        <div class="tour-controls">
+            <button id="tour-btn-pause-resume" class="tour-btn-action" onclick="window.togglePauseTour()">Pause</button>
+            <button class="tour-btn-quit" onclick="window.stopStudyTour()">Quit</button>
+        </div>
     `;
     document.body.appendChild(toastDiv);
 

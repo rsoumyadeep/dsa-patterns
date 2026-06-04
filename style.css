@@ -637,7 +637,42 @@ body {
     pointer-events: none;
 }
 
-.tour-btn-stop {
+.tour-controls {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.tour-btn-action {
+    background-color: var(--accent-blue);
+    color: #ffffff;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    transition: all 0.2s;
+    box-shadow: 0 2px 8px rgba(29, 78, 216, 0.25);
+}
+
+.tour-btn-action:hover {
+    background-color: var(--accent-hover);
+    transform: scale(1.03);
+}
+
+.tour-btn-action.tour-paused {
+    background-color: #d97706; /* Amber colour for paused state */
+    box-shadow: 0 2px 8px rgba(217, 119, 6, 0.35);
+}
+
+.tour-btn-action.tour-paused:hover {
+    background-color: #b45309;
+}
+
+.tour-btn-quit {
     background-color: #ef4444;
     color: #ffffff;
     border: none;
@@ -648,11 +683,11 @@ body {
     cursor: pointer;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    transition: background-color 0.2s, transform 0.2s;
+    transition: all 0.2s;
     box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
 }
 
-.tour-btn-stop:hover {
+.tour-btn-quit:hover {
     background-color: #dc2626;
     transform: scale(1.03);
 }

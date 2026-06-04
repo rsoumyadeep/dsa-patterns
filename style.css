@@ -643,8 +643,7 @@ body {
     align-items: center;
 }
 
-.tour-btn-action {
-    background-color: var(--accent-blue);
+.tour-btn {
     color: #ffffff;
     border: none;
     padding: 8px 16px;
@@ -655,39 +654,34 @@ body {
     text-transform: uppercase;
     letter-spacing: 0.5px;
     transition: all 0.2s;
-    box-shadow: 0 2px 8px rgba(29, 78, 216, 0.25);
 }
 
-.tour-btn-action:hover {
-    background-color: var(--accent-hover);
-    transform: scale(1.03);
-}
-
-.tour-btn-action.tour-paused {
-    background-color: #d97706; /* Amber colour for paused state */
-    box-shadow: 0 2px 8px rgba(217, 119, 6, 0.35);
-}
-
-.tour-btn-action.tour-paused:hover {
-    background-color: #b45309;
-}
-
-.tour-btn-quit {
+.tour-btn-stop {
     background-color: #ef4444;
-    color: #ffffff;
-    border: none;
-    padding: 8px 16px;
-    border-radius: 20px;
-    font-size: 11px;
-    font-weight: 700;
-    cursor: pointer;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    transition: all 0.2s;
     box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
 }
 
-.tour-btn-quit:hover {
+.tour-btn-stop:hover {
     background-color: #dc2626;
+    transform: scale(1.03);
+}
+
+.tour-btn-resume {
+    background-color: #10b981;
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+}
+
+.tour-btn-resume:hover {
+    background-color: #059669;
+    transform: scale(1.03);
+}
+
+.tour-btn-quit-new {
+    background-color: #6b7280;
+    box-shadow: 0 2px 8px rgba(107, 114, 128, 0.25);
+}
+
+.tour-btn-quit-new:hover {
+    background-color: #4b5563;
     transform: scale(1.03);
 }

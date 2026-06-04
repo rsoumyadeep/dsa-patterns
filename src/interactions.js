@@ -155,13 +155,13 @@ window.stopStudyTour = function() {
 };
 
 function updatePauseResumeButton() {
-    const btn = document.getElementById("tour-btn-pause-resume");
+    const btn = document.getElementById("tour-btn-stop-resume");
     if (btn) {
-        btn.textContent = tourPaused ? "Resume" : "Pause";
+        btn.textContent = tourPaused ? "Resume" : "Stop Tour";
         if (tourPaused) {
-            btn.classList.add("tour-paused");
+            btn.className = "tour-btn tour-btn-resume";
         } else {
-            btn.classList.remove("tour-paused");
+            btn.className = "tour-btn tour-btn-stop";
         }
     }
 }
@@ -179,8 +179,8 @@ document.addEventListener("DOMContentLoaded", () => {
     toastDiv.innerHTML = `
         <span id="tour-toast-text">Guided Tour</span>
         <div class="tour-controls">
-            <button id="tour-btn-pause-resume" class="tour-btn-action" onclick="window.togglePauseTour()">Pause</button>
-            <button class="tour-btn-quit" onclick="window.stopStudyTour()">Quit</button>
+            <button id="tour-btn-stop-resume" class="tour-btn tour-btn-stop" onclick="window.togglePauseTour()">Stop Tour</button>
+            <button class="tour-btn tour-btn-quit-new" onclick="window.stopStudyTour()">Quit</button>
         </div>
     `;
     document.body.appendChild(toastDiv);

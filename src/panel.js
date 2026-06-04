@@ -12,6 +12,11 @@ function openPanel(patternId) {
     const pattern = PATTERNS.find(p => p.id === patternId);
     if (!pattern) return;
 
+    // Track explored pattern progress
+    if (typeof window.markPatternVisited === "function") {
+        window.markPatternVisited(patternId);
+    }
+
     // Synchronize D3 visual highlight
     if (window.d3) {
         d3.selectAll(".node-circle").classed("node-selected", false);

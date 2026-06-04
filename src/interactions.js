@@ -70,6 +70,48 @@ let tourPaused = false;
 let tourOrder = [];
 let tourCurrentIndex = 0;
 
+// Exploration Progress tracking
+let visitedPatterns = new Set();
+try {
+    const stored = localStorage.getItem("visited_patterns");
+    if (stored) {
+        JSON.parse(stored).forEach(id => visitedPatterns.add(id));
+    }
+} catch (e) {
+    console.error("Error reading visited_patterns from localStorage:", e);
+}
+
+window.updateProgressUI = function() {
+    const total = (typeof PATTERNS !== "undefined") ? PATTERNS.length : 19;
+    const count = visitedPatterns.size;
+    const percent = total > 0 ? Math.round((count / total) * 100) : 0;
+    
+    const percentEl = document.getElementById("progress-percent");
+    const fillEl = document.getElementById("progress-bar-fill");
+    const countEl = document.getElementById("progress-count");
+    
+    if (percentEl) percentEl.textContent = `${percent}%`;
+    if (fillEl) fillEl.style.width = `${percent}%`;
+    if (countEl) countEl.textContent = `${count} of ${total} patterns`;
+};
+
+window.markPatternVisited = function(patternId) {
+    if (!visitedPatterns.has(patternId)) {
+        visitedPatterns.add(patternId);
+        localStorage.setItem("visited_patterns", JSON.stringify(Array.from(visitedPatterns)));
+        window.updateProgressUI();
+    }
+};
+
+window.resetProgress = function(event) {
+    if (event) event.stopPropagation(); // prevent panel or tour from intercepting click
+    if (confirm("Are you sure you want to reset your exploration progress?")) {
+        visitedPatterns.clear();
+        localStorage.removeItem("visited_patterns");
+        window.updateProgressUI();
+    }
+};
+
 window.startStudyTour = function() {
     if (tourActive) {
         if (tourPaused) {
@@ -193,6 +235,22 @@ document.addEventListener("DOMContentLoaded", () => {
         <!-- Top Left Legend -->
         <div id="legend-card" class="ui-card">
             <h3>Pattern Tiers</h3>
+            
+            <!-- Study Progress Section -->
+            <div id="progress-container">
+                <div class="progress-info">
+                    <span class="progress-label">Explored Progress</span>
+                    <span id="progress-percent">0%</span>
+                </div>
+                <div class="progress-bar-bg">
+                    <div id="progress-bar-fill"></div>
+                </div>
+                <div class="progress-footer">
+                    <span id="progress-count">0 of 19 patterns</span>
+                    <button id="reset-progress-btn" onclick="window.resetProgress(event)">Reset</button>
+                </div>
+            </div>
+
             <div class="legend-items">
                 <div class="legend-item"><span class="legend-color" style="background:#e0f2fe; border: 1.5px solid #0284c7;"></span> Tier 0: Basics (Arrays/Stack)</div>
                 <div class="legend-item"><span class="legend-color" style="background:#ede9fe; border: 1.5px solid #7c3aed;"></span> Tier 1: Basic Linear & Search</div>
@@ -214,6 +272,9 @@ document.addEventListener("DOMContentLoaded", () => {
             <button id="reset-layout-btn" class="ui-btn">Reset</button>
         </div>
     `;
+
+    // Render the loaded progress metrics
+    window.updateProgressUI();
 
     // 1. Keyboard bindings: Escape key to close panel/stop tour
     window.addEventListener("keydown", (e) => {

@@ -183,6 +183,7 @@ function init3D() {
     camera.position.set(0, 160, 240); // elevated viewing perspective
 
     renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+    renderer.setClearColor(0x060813, 1);
     renderer.setSize(width, height);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.shadowMap.enabled = true;
@@ -231,29 +232,32 @@ function initUniverse() {
     starField = new THREE.Points(starGeo, starMat);
     scene.add(starField);
 
-    // 2. Cosmic Nebula Clouds (Large Additive points)
+    // 2. Cosmic Nebula Clouds (Using tilted PlaneGeometry billboard meshes instead of massive Points)
     const nebulaCount = 5;
     const colors = [0x3b82f6, 0xec4899, 0x6366f1, 0xa855f7]; // blue, pink, indigo, purple
 
     for (let i = 0; i < nebulaCount; i++) {
-        const geo = new THREE.BufferGeometry();
-        const coords = new Float32Array(3);
-        coords[0] = (Math.random() - 0.5) * 320;
-        coords[1] = (Math.random() - 0.5) * 120 - 30;
-        coords[2] = (Math.random() - 0.5) * 320;
-        geo.setAttribute('position', new THREE.BufferAttribute(coords, 3));
-
-        const mat = new THREE.PointsMaterial({
+        const size = 240 + Math.random() * 120;
+        const geo = new THREE.PlaneGeometry(size, size);
+        const mat = new THREE.MeshBasicMaterial({
             color: colors[i % colors.length],
-            size: 240 + Math.random() * 120, // massive dust scaling
             map: softTexture,
             transparent: true,
-            opacity: 0.12,
+            opacity: 0.08, // Subtle nebula transparency
             depthWrite: false,
-            blending: THREE.AdditiveBlending // creates bright overlapping gas glows
+            blending: THREE.AdditiveBlending,
+            side: THREE.DoubleSide
         });
 
-        const nebula = new THREE.Points(geo, mat);
+        const nebula = new THREE.Mesh(geo, mat);
+        nebula.position.set(
+            (Math.random() - 0.5) * 320,
+            (Math.random() - 0.5) * 120 - 30,
+            (Math.random() - 0.5) * 320
+        );
+        nebula.rotation.x = Math.random() * Math.PI;
+        nebula.rotation.y = Math.random() * Math.PI;
+        nebula.rotation.z = Math.random() * Math.PI;
         scene.add(nebula);
     }
 }
@@ -426,17 +430,12 @@ function buildSolarSystem() {
         const detailColor = (textureType === 'cratered') ? '#000000' : '#ffffff';
         const proceduralMap = generatePlanetTexture(baseColor, detailColor, textureType);
 
-        const bubbleMat = new THREE.MeshPhysicalMaterial({
+        const bubbleMat = new THREE.MeshStandardMaterial({
             map: proceduralMap,
-            roughness: 0.08,
-            metalness: 0.12,
-            clearcoat: 1.0,
-            clearcoatRoughness: 0.05,
-            transmission: 0.45, // translucent refractive fill
-            thickness: 2.0,
+            roughness: 0.2,
+            metalness: 0.1,
             transparent: true,
-            opacity: 0.92,
-            ior: 1.42
+            opacity: 0.92
         });
 
         const mesh = new THREE.Mesh(sphereGeo, bubbleMat);
@@ -502,14 +501,12 @@ function spawnMoons(parentNode) {
     const moonGeo = new THREE.SphereGeometry(MOON_RADIUS, 16, 16);
 
     parentNode.subpatterns.forEach((sub, index) => {
-        const moonMat = new THREE.MeshPhysicalMaterial({
+        const moonMat = new THREE.MeshStandardMaterial({
             color: 0xe2e8f0,
-            roughness: 0.1,
+            roughness: 0.3,
             metalness: 0.1,
-            transmission: 0.8,
-            thickness: 0.8,
             transparent: true,
-            opacity: 0.72
+            opacity: 0.75
         });
 
         const mesh = new THREE.Mesh(moonGeo, moonMat);
@@ -959,7 +956,6 @@ document.addEventListener("DOMContentLoaded", () => {
     init3D();
     initUniverse();
     initOrbits();
-    initSun();
     buildSolarSystem();
     animate();
 

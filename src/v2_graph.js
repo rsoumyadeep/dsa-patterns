@@ -1,19 +1,15 @@
 /**
- * v2_graph.js — 3D Bubble Graph logic using Three.js (Version 2).
- * Features a lightweight 3D spring-embedder layout, physical glassmorphic materials,
- * projected HTML labels using CSS2DRenderer, smooth camera flight animations,
- * search filtering, progress tracking, and a Guided Study Order Tour.
+ * v2_graph.js — 3D Solar System Visualizer using Three.js (Version 2).
+ * Features a central glowing Core Sun, concentric circular orbit rings representing DSA Tiers,
+ * revolving pattern planets, orbiting subpattern satellite moons, and a starry dark cosmic theme.
  */
 
-console.log("v2_graph.js loading...");
+console.log("v2_graph.js loading: Solar System layout...");
 
-// Configuration variables
-const NODE_RADIUS = 8;
-const SPRING_LENGTH = 75;
-const SPRING_K = 0.08;
-const CHARGE_STRENGTH = 2000;
-const GRAVITY_STRENGTH = 0.06;
-const DAMPING = 0.85;
+// Constants for planetary sizes and orbits
+const NODE_RADIUS = 7;
+const SUN_RADIUS = 14;
+const MOON_RADIUS = 2.0;
 
 // Global Three.js objects
 let scene, camera, renderer, labelRenderer, controls;
@@ -21,7 +17,16 @@ let nodesData = [];
 let linksData = [];
 let nodeMeshes = [];
 let linkLines = [];
+let orbitLines = [];
+let starField = null;
+let sunMesh = null;
+let sunLight = null;
 let animationFrameId = null;
+
+// Spawning Satellite Moons
+let selectedNodeId = null;
+let activeMoonContainer = null;
+let activeMoons = [];
 
 // Tour playback states
 let tourActive = false;
@@ -41,7 +46,7 @@ try {
     console.error("Error reading visited_patterns from localStorage:", e);
 }
 
-// 7-Tier styling palette
+// 7-Tier styling palette (Saturated pastel fills)
 const TIER_COLORS = {
     0: "#e0f2fe",  // Sky blue
     1: "#ede9fe",  // Violet
@@ -52,45 +57,41 @@ const TIER_COLORS = {
     6: "#fef9c3"   // Yellow
 };
 
-const TIER_STROKE_COLORS = {
-    0: "#0284c7",
-    1: "#7c3aed",
-    2: "#059669",
-    3: "#d97706",
-    4: "#e11d48",
-    5: "#c084fc",
-    6: "#ca8a04"
-};
+// Orbit layout distance helpers
+function getTierRadius(tier) {
+    // concentric orbits spanning outward
+    return 36 + tier * 32; 
+}
 
-// CSS easing helper
+// Cubic easing helper
 function easeCubicOut(t) {
     return (--t) * t * t + 1;
 }
 
-// Setup Scene, WebGL, Lighting, and CSS2D Label projection
+// Setup Scene, WebGL canvas, cosmic lights, and CSS2D label overlays
 function init3D() {
     const width = window.innerWidth;
     const height = window.innerHeight;
 
-    // 1. Core Scene & Cam
+    // 1. Perspective Camera & Scene
     scene = new THREE.Scene();
     camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 1000);
-    camera.position.set(0, 0, 240);
+    camera.position.set(0, 150, 240); // slightly elevated view for 3D depth
 
-    // 2. Transparent WebGL Renderer (underlaid grid shows through)
-    renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    // 2. WebGL Renderer
+    renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
     renderer.setSize(width, height);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.shadowMap.enabled = true;
     document.getElementById("canvas3d").appendChild(renderer.domElement);
 
-    // 3. CSS2D Renderer for HTML Labels on top of WebGL coordinates
+    // 3. CSS2D label projection overlay
     labelRenderer = new THREE.CSS2DRenderer();
     labelRenderer.setSize(width, height);
     labelRenderer.domElement.style.position = 'absolute';
     labelRenderer.domElement.style.top = '0';
     labelRenderer.domElement.style.left = '0';
-    labelRenderer.domElement.style.pointerEvents = 'none'; // click passes through to orbit canvas
+    labelRenderer.domElement.style.pointerEvents = 'none'; // click passes through
     document.getElementById("labels3d").appendChild(labelRenderer.domElement);
 
     // 4. Orbit Camera Controls
@@ -98,47 +99,144 @@ function init3D() {
     controls.enableDamping = true;
     controls.dampingFactor = 0.05;
     controls.maxDistance = 450;
-    controls.minDistance = 40;
+    controls.minDistance = 35;
+    // Set target initially to Sun
+    controls.target.set(0, 0, 0);
 
-    // 5. Soft Lighting
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+    // 5. Cosmic Lighting
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.45);
     scene.add(ambientLight);
 
-    const dirLight1 = new THREE.DirectionalLight(0xffffff, 0.6);
-    dirLight1.position.set(120, 150, 100);
+    const dirLight1 = new THREE.DirectionalLight(0xffffff, 0.5);
+    dirLight1.position.set(120, 180, 100);
     scene.add(dirLight1);
 
-    const dirLight2 = new THREE.DirectionalLight(0x0ea5e9, 0.3); // Sky accent light
-    dirLight2.position.set(-120, -150, 50);
+    const dirLight2 = new THREE.DirectionalLight(0x38bdf8, 0.35); // soft blue fill light
+    dirLight2.position.set(-100, -100, 50);
     scene.add(dirLight2);
-
-    const pointLight = new THREE.PointLight(0xffffff, 0.5, 300);
-    pointLight.position.set(0, 0, 150);
-    scene.add(pointLight);
 }
 
-// Generate Nodes & Links, Apply physical glass materials
-function buildGraph() {
-    // 1. Prepare Nodes with random 3D starting coordinates inside a sphere
+// Particle space starfield background
+function initStarfield() {
+    const starGeo = new THREE.BufferGeometry();
+    const starCount = 1200;
+    const positions = new Float32Array(starCount * 3);
+
+    for (let i = 0; i < starCount * 3; i++) {
+        // spread particles randomly inside a large box bounding area
+        positions[i] = (Math.random() - 0.5) * 800;
+    }
+
+    starGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    const starMat = new THREE.PointsMaterial({
+        color: 0xffffff,
+        size: 0.9,
+        transparent: true,
+        opacity: 0.55
+    });
+
+    starField = new THREE.Points(starGeo, starMat);
+    scene.add(starField);
+}
+
+// Circular tier orbits helper lines (XZ plane)
+function initOrbits() {
+    for (let t = 0; t <= 6; t++) {
+        const radius = getTierRadius(t);
+        const points = [];
+        
+        for (let j = 0; j <= 64; j++) {
+            const theta = (j / 64) * Math.PI * 2;
+            points.push(new THREE.Vector3(radius * Math.cos(theta), 0, radius * Math.sin(theta)));
+        }
+
+        const orbitGeo = new THREE.BufferGeometry().setFromPoints(points);
+        // Faint, dotted helper lines
+        const orbitMat = new THREE.LineDashedMaterial({
+            color: 0x475569,
+            dashSize: 3,
+            gapSize: 3,
+            transparent: true,
+            opacity: 0.32
+        });
+
+        const orbitLine = new THREE.LineLoop(orbitGeo, orbitMat);
+        orbitLine.computeLineDistances(); // required for dashed material
+        scene.add(orbitLine);
+        
+        orbitLines.push({
+            tier: t,
+            line: orbitLine,
+            radius: radius
+        });
+    }
+}
+
+// Central Core Star (DSA Sun)
+function initSun() {
+    const sunGeo = new THREE.SphereGeometry(SUN_RADIUS, 32, 32);
+    // MeshBasicMaterial so it glows independently of other lights
+    const sunMat = new THREE.MeshBasicMaterial({ color: 0xffb703 });
+    sunMesh = new THREE.Mesh(sunGeo, sunMat);
+    scene.add(sunMesh);
+
+    // Label CSS2D pill for the Sun
+    const sunDiv = document.createElement('div');
+    sunDiv.className = 'v2-node-label';
+    sunDiv.style.borderLeft = '4px solid #f59e0b';
+    sunDiv.style.fontWeight = '800';
+    sunDiv.style.fontSize = '12px';
+    sunDiv.style.backgroundColor = 'rgba(251, 191, 36, 0.15)';
+    sunDiv.innerHTML = `<span style="color:#fbbf24; margin-right: 4px;">☀️</span>DSA CORE`;
+    
+    const sunLabel = new THREE.CSS2DObject(sunDiv);
+    sunLabel.position.set(0, SUN_RADIUS + 5, 0);
+    sunMesh.add(sunLabel);
+
+    // Dynamic light source from Sun outwards
+    sunLight = new THREE.PointLight(0xfffbeb, 1.4, 450);
+    scene.add(sunLight);
+}
+
+// Build nodes as revolving planets
+function buildSolarSystem() {
+    // 1. Group patterns by tier to calculate even spacing angles
+    const tierCounts = {};
+    PATTERNS.forEach(p => {
+        tierCounts[p.tier] = (tierCounts[p.tier] || 0) + 1;
+    });
+
+    const tierIndices = {};
+    
+    // 2. Initialize planetary orbits
     nodesData = PATTERNS.map(p => {
-        const theta = Math.random() * Math.PI * 2;
-        const phi = Math.acos((Math.random() * 2) - 1);
-        const radius = 60 + Math.random() * 25;
+        const tier = p.tier;
+        const totalInTier = tierCounts[tier];
+        const indexInTier = tierIndices[tier] || 0;
+        tierIndices[tier] = indexInTier + 1;
+
+        const radius = getTierRadius(tier);
+        // Distribute evenly along the circle path
+        const startAngle = (indexInTier / totalInTier) * Math.PI * 2;
+
         return {
             id: p.id,
             label: p.label,
             tier: p.tier,
             subpatterns: p.subpatterns,
-            x: radius * Math.sin(phi) * Math.cos(theta),
-            y: radius * Math.sin(phi) * Math.sin(theta),
-            z: radius * Math.cos(phi),
-            vx: 0,
-            vy: 0,
-            vz: 0
+            orbitRadius: radius,
+            angle: startAngle,
+            // Kepler's law speed approximation (outer planets move slower)
+            speed: 0.003 / (1 + tier * 0.45),
+            // Randomized phase offset for zero-gravity Y-axis wobble
+            yOffset: Math.random() * Math.PI * 2,
+            x: radius * Math.cos(startAngle),
+            y: 0,
+            z: radius * Math.sin(startAngle)
         };
     });
 
-    // 2. Map links from dependencies
+    // 3. Map links from dependencies
     linksData = [];
     PATTERNS.forEach(p => {
         if (p.dependencies) {
@@ -151,60 +249,59 @@ function buildGraph() {
         }
     });
 
-    // 3. Render 3D Spheres (Nodes)
+    // 4. Render spheres (Planets) with clearcoat glossy physical glass
     const sphereGeo = new THREE.SphereGeometry(NODE_RADIUS, 32, 32);
 
     nodesData.forEach(node => {
-        // High quality refractive standard/physical glass material
         const bubbleMat = new THREE.MeshPhysicalMaterial({
             color: new THREE.Color(TIER_COLORS[node.tier] || "#ffffff"),
-            roughness: 0.12,
-            metalness: 0.08,
+            roughness: 0.08,
+            metalness: 0.15,
             clearcoat: 1.0,
-            clearcoatRoughness: 0.08,
-            transmission: 0.65, // translucent glass fill
-            thickness: 2.5,
+            clearcoatRoughness: 0.06,
+            transmission: 0.58, // glass refraction fill
+            thickness: 2.2,
             transparent: true,
-            opacity: 0.92,
-            ior: 1.5 // refraction ratio
+            opacity: 0.9,
+            ior: 1.45
         });
 
         const mesh = new THREE.Mesh(sphereGeo, bubbleMat);
         mesh.position.set(node.x, node.y, node.z);
-        mesh.userData = { id: node.id };
         scene.add(mesh);
         nodeMeshes.push(mesh);
 
-        // Render CSS2D projected HTML label pill
+        // Project HTML CSS2D label pill
         const labelDiv = document.createElement('div');
         labelDiv.id = `v2-label-${node.id}`;
         labelDiv.className = `v2-node-label tier-${node.tier}`;
         labelDiv.innerHTML = `<span class="label-text">${node.label}</span>`;
         
-        // Handle click on label
         labelDiv.addEventListener('click', (e) => {
             e.stopPropagation();
             selectNode(node.id);
         });
 
         const labelObj = new THREE.CSS2DObject(labelDiv);
-        labelObj.position.set(0, NODE_RADIUS + 3.5, 0); // stack label slightly above bubble
+        labelObj.position.set(0, NODE_RADIUS + 3.5, 0);
         mesh.add(labelObj);
+        
         node.labelElement = labelDiv;
+        node.mesh = mesh;
     });
 
-    // 4. Render Edge connection lines
+    // 5. Render stretching connection lines
     const lineMat = new THREE.LineBasicMaterial({
-        color: 0x94a3b8,
+        color: 0x475569,
         transparent: true,
-        opacity: 0.55
+        opacity: 0.45
     });
 
     linksData.forEach(link => {
         const geometry = new THREE.BufferGeometry();
-        const positions = new Float32Array(2 * 3); // 2 vertices (x,y,z)
+        const positions = new Float32Array(2 * 3); // 2 points
         geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-        
+
         const line = new THREE.Line(geometry, lineMat);
         scene.add(line);
         linkLines.push({
@@ -215,88 +312,115 @@ function buildGraph() {
     });
 }
 
-// 3D Spring-embedder force simulation updates
-function tickSimulation() {
-    // 1. Repulsion (charge) between all pairs
-    const len = nodesData.length;
-    for (let i = 0; i < len; i++) {
-        for (let j = i + 1; j < len; j++) {
-            const n1 = nodesData[i];
-            const n2 = nodesData[j];
-            const dx = n2.x - n1.x;
-            const dy = n2.y - n1.y;
-            const dz = n2.z - n1.z;
-            const dist = Math.sqrt(dx*dx + dy*dy + dz*dz) || 1.0;
-            
-            if (dist < 180) {
-                const force = CHARGE_STRENGTH / (dist * dist);
-                const fx = (dx / dist) * force;
-                const fy = (dy / dist) * force;
-                const fz = (dz / dist) * force;
+// Spawns sub-pattern satellite moons orbiting a selected planet
+function spawnMoons(parentNode) {
+    // 1. Clear previous selection
+    clearMoons();
 
-                n1.vx -= fx;
-                n1.vy -= fy;
-                n1.vz -= fz;
+    // 2. Create local moons container group
+    activeMoonContainer = new THREE.Group();
+    // Position immediately at the parent planet's coordinates
+    activeMoonContainer.position.set(parentNode.x, parentNode.y, parentNode.z);
+    scene.add(activeMoonContainer);
 
-                n2.vx += fx;
-                n2.vy += fy;
-                n2.vz += fz;
+    const numMoons = parentNode.subpatterns.length;
+    const moonGeo = new THREE.SphereGeometry(MOON_RADIUS, 16, 16);
+
+    parentNode.subpatterns.forEach((sub, index) => {
+        // High transparency glassy moon mesh
+        const moonMat = new THREE.MeshPhysicalMaterial({
+            color: 0xe2e8f0,
+            roughness: 0.1,
+            metalness: 0.1,
+            transmission: 0.8,
+            thickness: 1.0,
+            transparent: true,
+            opacity: 0.75
+        });
+
+        const mesh = new THREE.Mesh(moonGeo, moonMat);
+        
+        // Circular offset positioning relative to planet
+        const orbitRadius = 15 + index * 4.5;
+        const angle = (index / numMoons) * Math.PI * 2;
+
+        mesh.position.set(orbitRadius * Math.cos(angle), 0, orbitRadius * Math.sin(angle));
+        activeMoonContainer.add(mesh);
+
+        // Add subpattern tag labels
+        const labelDiv = document.createElement('div');
+        labelDiv.className = 'v2-moon-label';
+        labelDiv.textContent = sub.label;
+
+        const labelObj = new THREE.CSS2DObject(labelDiv);
+        labelObj.position.set(0, MOON_RADIUS + 2.0, 0);
+        mesh.add(labelObj);
+
+        activeMoons.push({
+            mesh: mesh,
+            labelElement: labelDiv,
+            radius: orbitRadius,
+            angle: angle,
+            // Revolution speed
+            speed: 0.015 + (index * 0.004)
+        });
+    });
+}
+
+// Destroys satellite moons
+function clearMoons() {
+    if (activeMoonContainer) {
+        activeMoons.forEach(m => {
+            if (m.labelElement && m.labelElement.parentNode) {
+                m.labelElement.parentNode.removeChild(m.labelElement);
             }
-        }
+        });
+        scene.remove(activeMoonContainer);
+        activeMoonContainer = null;
     }
+    activeMoons = [];
+}
 
-    // 2. Attraction along spring links
-    linksData.forEach(link => {
-        const s = nodesData.find(n => n.id === link.source);
-        const t = nodesData.find(n => n.id === link.target);
-        if (s && t) {
-            const dx = t.x - s.x;
-            const dy = t.y - s.y;
-            const dz = t.z - s.z;
-            const dist = Math.sqrt(dx*dx + dy*dy + dz*dz) || 1.0;
-            const force = (dist - SPRING_LENGTH) * SPRING_K;
+// Animate positions and render tick
+function animate() {
+    animationFrameId = requestAnimationFrame(animate);
 
-            const fx = (dx / dist) * force;
-            const fy = (dy / dist) * force;
-            const fz = (dz / dist) * force;
+    const time = Date.now() * 0.001;
 
-            s.vx += fx;
-            s.vy += fy;
-            s.vz += fz;
-
-            t.vx -= fx;
-            t.vy -= fy;
-            t.vz -= fz;
-        }
-    });
-
-    // 3. Gravity / Centering pull
-    nodesData.forEach(n => {
-        n.vx -= n.x * GRAVITY_STRENGTH;
-        n.vy -= n.y * GRAVITY_STRENGTH;
-        n.vz -= n.z * GRAVITY_STRENGTH;
-    });
-
-    // 4. Update coordinates & apply damping
-    nodesData.forEach(n => {
-        n.x += n.vx;
-        n.y += n.vy;
-        n.z += n.vz;
-
-        n.vx *= DAMPING;
-        n.vy *= DAMPING;
-        n.vz *= DAMPING;
-    });
-
-    // 5. Update WebGL meshes position
+    // 1. Move planets revolving around Sun
     nodesData.forEach((node, i) => {
+        node.angle += node.speed;
+        node.x = node.orbitRadius * Math.cos(node.angle);
+        node.z = node.orbitRadius * Math.sin(node.angle);
+        // Sinusoidal zero-gravity wobble
+        node.y = Math.sin(time * 1.5 + node.yOffset) * 2;
+
         const mesh = nodeMeshes[i];
         if (mesh) {
             mesh.position.set(node.x, node.y, node.z);
         }
     });
 
-    // 6. Update link line coordinates
+    // 2. Move active moons revolving around selected planet
+    if (activeMoonContainer && selectedNodeId) {
+        const parentNode = nodesData.find(n => n.id === selectedNodeId);
+        if (parentNode) {
+            // Keep container locked onto parent coordinate
+            activeMoonContainer.position.set(parentNode.x, parentNode.y, parentNode.z);
+
+            // Orbit each moon
+            activeMoons.forEach(m => {
+                m.angle += m.speed;
+                m.mesh.position.set(
+                    m.radius * Math.cos(m.angle),
+                    Math.sin(time * 3 + m.angle) * 1.2, // dynamic vertical sway
+                    m.radius * Math.sin(m.angle)
+                );
+            });
+        }
+    }
+
+    // 3. Stretch link connection lines dynamically
     linkLines.forEach(item => {
         const s = nodesData.find(n => n.id === item.sourceId);
         const t = nodesData.find(n => n.id === item.targetId);
@@ -311,21 +435,13 @@ function tickSimulation() {
             item.line.geometry.attributes.position.needsUpdate = true;
         }
     });
-}
 
-// Render loop
-function animate() {
-    animationFrameId = requestAnimationFrame(animate);
-
-    // Update force positions
-    tickSimulation();
-
-    // Update camera controls
+    // 4. Update Orbit camera damping
     if (controls) {
         controls.update();
     }
 
-    // Render WebGL and CSS2D overlays
+    // 5. Draw
     if (renderer && scene && camera) {
         renderer.render(scene, camera);
     }
@@ -334,27 +450,24 @@ function animate() {
     }
 }
 
-// Selects node, opens sidebar, highlights elements, and triggers camera flight
+// Selects planet, flies camera, spawns moons, and opens panel drawer
 let activeFlightAnimation = null;
 window.selectNode = function(nodeId) {
     const node = nodesData.find(n => n.id === nodeId);
     if (!node) return;
 
-    // Close any previous panel state
-    closePanel();
+    selectedNodeId = nodeId;
 
-    // 1. Highlight labels
+    // 1. Highlight HTML labels
     nodesData.forEach(n => {
-        if (n.labelElement) {
-            n.labelElement.classList.remove("selected");
-        }
+        if (n.labelElement) n.labelElement.classList.remove("selected");
     });
-    const activeLabel = document.getElementById(`v2-label-${nodeId}`);
-    if (activeLabel) {
-        activeLabel.classList.add("selected");
+    const label = document.getElementById(`v2-label-${nodeId}`);
+    if (label) {
+        label.classList.add("selected");
     }
 
-    // 2. Animate selected sphere size (scale selected up, rest normal)
+    // 2. Adjust planet sizes (scale selected planet up, rest normal)
     nodesData.forEach((n, idx) => {
         const mesh = nodeMeshes[idx];
         if (mesh) {
@@ -368,12 +481,15 @@ window.selectNode = function(nodeId) {
         window.markPatternVisited(nodeId);
     }
 
-    // 4. Open side drawer panel
+    // 4. Spawn orbiting moons
+    spawnMoons(node);
+
+    // 5. Open side drawer panel
     if (typeof openPanel === "function") {
         openPanel(nodeId);
     }
 
-    // 5. Animate Orbit Camera Focus flight to target
+    // 6. Animate Orbit Camera Focus flight to target
     flyCameraTo(node.x, node.y, node.z);
 };
 
@@ -383,7 +499,7 @@ function flyCameraTo(tx, ty, tz) {
         cancelAnimationFrame(activeFlightAnimation);
     }
 
-    const duration = 45; // frames
+    const duration = 40; // frames
     let frame = 0;
 
     const startCamX = camera.position.x;
@@ -394,10 +510,10 @@ function flyCameraTo(tx, ty, tz) {
     const startTarY = controls.target.y;
     const startTarZ = controls.target.z;
 
-    // Fly camera slightly back on the Z-axis relative to target node coordinates
+    // Position camera focused slightly elevated and back from target planet coordinates
     const endCamX = tx;
-    const endCamY = ty;
-    const endCamZ = tz + 80;
+    const endCamY = ty + 40;
+    const endCamZ = tz + 75;
 
     const endTarX = tx;
     const endTarY = ty;
@@ -429,27 +545,24 @@ function flyCameraTo(tx, ty, tz) {
     step();
 }
 
-// Navigation wrapper referenced in panel.js (dependency chip click)
-window.navigateToPattern = function(patternId) {
-    window.selectNode(patternId);
-};
-
-// Search filter: scales and fades non-matching nodes
+// Search filter: fades non-matching orbits, planets, and link lines
 function filterNodes3D(query) {
     if (query === "") {
-        // Restore all nodes and lines
+        // Restore all
         nodesData.forEach((n, idx) => {
             const mesh = nodeMeshes[idx];
             if (mesh) mesh.scale.set(1.0, 1.0, 1.0);
             if (n.labelElement) n.labelElement.classList.remove("faded");
         });
         linkLines.forEach(item => {
-            if (item.line) item.line.material.opacity = 0.55;
+            if (item.line) item.line.material.opacity = 0.45;
+        });
+        orbitLines.forEach(orbit => {
+            if (orbit.line) orbit.line.material.opacity = 0.32;
         });
         return;
     }
 
-    // Check query matches
     function matchesQuery(node, term) {
         if (node.label.toLowerCase().includes(term)) return true;
         if (node.subpatterns) {
@@ -461,6 +574,7 @@ function filterNodes3D(query) {
         return false;
     }
 
+    // Filter planets
     nodesData.forEach((n, idx) => {
         const mesh = nodeMeshes[idx];
         const matches = matchesQuery(n, query);
@@ -479,7 +593,7 @@ function filterNodes3D(query) {
         }
     });
 
-    // Fade link lines connecting unselected elements
+    // Fade link lines
     linkLines.forEach(item => {
         const sourceNode = nodesData.find(n => n.id === item.sourceId);
         const targetNode = nodesData.find(n => n.id === item.targetId);
@@ -487,35 +601,17 @@ function filterNodes3D(query) {
         const targetMatch = targetNode && matchesQuery(targetNode, query);
         
         if (item.line) {
-            item.line.material.opacity = (sourceMatch && targetMatch) ? 0.65 : 0.05;
+            item.line.material.opacity = (sourceMatch && targetMatch) ? 0.6 : 0.05;
         }
     });
-}
 
-// Topological Sort for Study Order
-function getTopologicalOrder() {
-    const visited = new Set();
-    const temp = new Set();
-    const order = [];
-
-    function visit(nodeId) {
-        if (visited.has(nodeId)) return;
-        if (temp.has(nodeId)) return; // acyclicity check
-        
-        temp.add(nodeId);
-
-        const node = PATTERNS.find(p => p.id === nodeId);
-        if (node && node.dependencies) {
-            node.dependencies.forEach(depId => visit(depId));
+    // Fade helper orbit lines if they contain no matching planets
+    orbitLines.forEach(orbit => {
+        const hasMatchInTier = nodesData.some(n => n.tier === orbit.tier && matchesQuery(n, query));
+        if (orbit.line) {
+            orbit.line.material.opacity = hasMatchInTier ? 0.4 : 0.03;
         }
-
-        temp.delete(nodeId);
-        visited.add(nodeId);
-        order.push(nodeId);
-    }
-
-    PATTERNS.forEach(p => visit(p.id));
-    return order;
+    });
 }
 
 // Guided Topological 3D Study Tour controls
@@ -563,7 +659,7 @@ function runTourStep() {
 
     tourCurrentIndex++;
 
-    // Proceed to next node in 3.5s (slightly longer for 3D camera travel)
+    // Proceed to next node in 3.5s
     tourInterval = setTimeout(runTourStep, 3500);
 }
 
@@ -597,6 +693,8 @@ window.stopStudyTour = function() {
         toast.classList.add("hidden");
     }
     closePanel();
+    clearMoons();
+    selectedNodeId = null;
     
     // Scale all nodes back to normal
     nodesData.forEach((n, idx) => {
@@ -643,9 +741,12 @@ window.resetProgress = function(event) {
 
 // UI Elements Injection & Listeners on Page Load
 document.addEventListener("DOMContentLoaded", () => {
-    // Initialize ThreeJS
+    // Initialize ThreeJS Solar System
     init3D();
-    buildGraph();
+    initStarfield();
+    initOrbits();
+    initSun();
+    buildSolarSystem();
     animate();
 
     // 1. Create Tooltip & Guided Tour Toast overlays programmatically
@@ -743,6 +844,8 @@ document.addEventListener("DOMContentLoaded", () => {
         resetBtn.addEventListener("click", () => {
             window.stopStudyTour();
             closePanel();
+            clearMoons();
+            selectedNodeId = null;
             
             // Scale nodes back to normal
             nodesData.forEach((n, idx) => {
@@ -750,7 +853,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (mesh) mesh.scale.set(1.0, 1.0, 1.0);
             });
 
-            // Smoothly fly camera back to home coordinate
+            // Smoothly fly camera back to elevated home coordinate
             flyCameraTo(0, 0, 0);
         });
     }
@@ -779,6 +882,8 @@ document.addEventListener("DOMContentLoaded", () => {
             if (e.target.id === "canvas3d" || e.target.tagName === "CANVAS") {
                 window.stopStudyTour();
                 closePanel();
+                clearMoons();
+                selectedNodeId = null;
                 
                 // Return selected scales to normal
                 nodesData.forEach((n, idx) => {

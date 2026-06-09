@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DSA Pattern 3D Bubble Graph</title>
+    <!-- Modern Premium Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="v2_style.css">
+    <!-- Three.js, OrbitControls and CSS2DRenderer CDNs -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/renderers/CSS2DRenderer.js"></script>
+</head>
+<body>
+    <!-- Three.js Canvas container -->
+    <div id="canvas3d"></div>
+
+    <!-- CSS2D labels container overlay -->
+    <div id="labels3d"></div>
+
+    <!-- Collapsible Details / Side Panel -->
+    <div id="panel" class="panel-collapsed">
+        <!-- Dynamic content will be rendered here by panel.js -->
+    </div>
+
+    <!-- UI Overlay Elements (Legend, Search, Controls) -->
+    <div id="ui-overlay">
+        <!-- Injected by v2_graph.js -->
+    </div>
+
+    <!-- Load Scripts in correct order -->
+    <script src="data/patterns.js"></script>
+    <script src="src/panel.js"></script>
+    <script src="src/v2_graph.js"></script>
+</body>
+</html>

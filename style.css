@@ -758,3 +758,33 @@ body {
     background-color: #4b5563;
     transform: scale(1.03);
 }
+
+/* View Toggle Button Styles */
+.view-toggle-container {
+    margin-left: 10px;
+    display: inline-block;
+}
+
+.v2-toggle-btn {
+    border: 1px solid var(--border-color);
+    background: var(--panel-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    color: var(--text-primary);
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    transition: all 0.25s;
+    box-shadow: 0 2px 8px var(--shadow-color);
+}
+
+.v2-toggle-btn:hover {
+    border-color: var(--accent-blue);
+    color: var(--accent-blue);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(29, 78, 216, 0.15);
+}

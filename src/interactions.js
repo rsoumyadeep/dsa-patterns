@@ -270,6 +270,9 @@ document.addEventListener("DOMContentLoaded", () => {
             </div>
             <button id="study-tour-btn" class="ui-btn" style="border-color: var(--accent-blue); color: var(--accent-blue)">Study Order</button>
             <button id="reset-layout-btn" class="ui-btn">Reset</button>
+            <div class="view-toggle-container">
+                <button class="v2-toggle-btn" onclick="window.location.href='version_2.html'">3D View</button>
+            </div>
         </div>
     `;
 
